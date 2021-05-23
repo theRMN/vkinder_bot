@@ -26,22 +26,27 @@ def get_users(user_id):
 
 
 def search_users(age=0, sex=0, city=0):
-
     if sex == 2:
         sex = 1
     else:
         sex = 2
 
-    data = session_2.method('users.search',
-                            {'age_from': age - 1,
-                             'age_to': age + 1,
-                             'sex': sex,
-                             'city': city,
-                             'status': 6,
-                             'count': 5,
-                             'fields': 'photo_max_orig'})
-    pprint(data)
-    return data
+    request = session_2.method('users.search',
+                               {'age_from': age - 1,
+                                'age_to': age + 1,
+                                'sex': sex,
+                                'city': city,
+                                'status': 6,
+                                'count': 100,
+                                'fields': 'photo_max_orig'})
+
+    data = {'items': []}
+
+    for i in request['items']:
+        if i['is_closed'] is False:
+            data['items'].append(i)
+
+    return data['items']
 
 
 def get_city_from_id(country, city):
@@ -52,6 +57,24 @@ def get_city_from_id(country, city):
 
     city_id = data['items'][0]['id']
     return city_id
+
+
+def get_photos(user_id):
+    request = session_2.method('photos.getAll', {'owner_id': user_id,
+                                                 'offset': 0,
+                                                 'count': 50,
+                                                 'photo_sizes': 1,
+                                                 'extended': 1,
+                                                 'v': 5.131})
+
+    result = {}
+
+    for i in request['items']:
+        result[i['sizes'][-1]['url']] = i['likes']['count']
+
+    pprint(request)
+
+    return sorted(result)[-4: -1]
 
 
 def send_hello(event):
@@ -106,11 +129,11 @@ def send_search(event):
     pprint(data)
 
     data_2 = search_users(int(data['возраст']), data['sex'], data['город'])
+    photo = '\n'.join(get_photos(str(data_2[0]['id'])))
 
-    first_name = data_2['items'][0]['first_name']
-    last_name = data_2['items'][0]['last_name']
-    link = 'vk.com/id' + str(data_2['items'][0]['id'])
-    photo = data_2['items'][0]['photo_max_orig']
+    first_name = data_2[0]['first_name']
+    last_name = data_2[0]['last_name']
+    link = 'vk.com/id' + str(data_2[0]['id'])
 
     write_msg(event.user_id, f'{first_name} {last_name} {link}\n{photo}')
     return
