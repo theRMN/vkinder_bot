@@ -11,6 +11,15 @@ session_2 = vk_api.VkApi(token=app_token)
 longpoll = VkLongPoll(session)
 
 
+def get_request(longpoll=longpoll):
+    for event in longpoll.listen():
+        if event.type == VkEventType.MESSAGE_NEW:
+
+            if event.to_me:
+                request = event.text.lower()
+                return request
+
+
 def write_msg(user_id, message):
     session.method('messages.send',
                    {'user_id': user_id,
@@ -22,6 +31,7 @@ def get_users(user_id):
     data = session.method('users.get',
                           {'user_ids': user_id,
                            'fields': 'bdate,sex,country,city,relation'})
+
     return data
 
 
@@ -37,7 +47,7 @@ def search_users(age=0, sex=0, city=0):
                                 'sex': sex,
                                 'city': city,
                                 'status': 6,
-                                'count': 100,
+                                'count': 1000,
                                 'fields': 'photo_max_orig'})
 
     data = {'items': []}
@@ -72,8 +82,6 @@ def get_photos(user_id):
     for i in request['items']:
         result[i['sizes'][-1]['url']] = i['likes']['count']
 
-    pprint(request)
-
     return sorted(result)[-4: -1]
 
 
@@ -86,7 +94,8 @@ def send_hello(event):
 def send_menu(event):
     write_msg(event.user_id, f'===== Список комманд =====\n'
                              f'/p - рандомная картинка\n'
-                             f'/s - поиск\n')
+                             f'/s - поиск\n'
+                             f'/n - следующий человек в поиске\n')
     return
 
 
@@ -115,28 +124,29 @@ def send_search(event):
         if i[1] is None:
             write_msg(event.user_id, f'Введите свой {i[0]}')
 
-            for event in longpoll.listen():
-                if event.type == VkEventType.MESSAGE_NEW:
+            request = get_request()
 
-                    if event.to_me:
-                        request = event.text.lower()
+            if i[0] == 'город':
+                data['город'] = get_city_from_id(country_id, request)
+            elif i[0] == 'возраст' and int(request) > 70:
+                write_msg(event.user_id, 'Слишком большое значение возраста, попробуйте снова')
+            else:
+                data[i[0]] = request
 
-                        if i[0] == 'город':
-                            data['город'] = get_city_from_id(country_id, request)
-                        else:
-                            data[i[0]] = request
-                        break
-    pprint(data)
+    for i in search_users(int(data['возраст']), data['sex'], data['город']):
+        first_name = i['first_name']
+        last_name = i['last_name']
+        link = 'vk.com/id' + str(i['id'])
+        photo = '\n'.join(get_photos(str(i['id'])))
 
-    data_2 = search_users(int(data['возраст']), data['sex'], data['город'])
-    photo = '\n'.join(get_photos(str(data_2[0]['id'])))
+        write_msg(event.user_id, f'{first_name} {last_name} - {link}\n{photo}')
 
-    first_name = data_2[0]['first_name']
-    last_name = data_2[0]['last_name']
-    link = 'vk.com/id' + str(data_2[0]['id'])
+        request = get_request()
 
-    write_msg(event.user_id, f'{first_name} {last_name} {link}\n{photo}')
-    return
+        if request == '/n':
+            continue
+        else:
+            return
 
 
 def execute():
@@ -146,14 +156,23 @@ def execute():
             if event.to_me:
                 request = event.text.lower()
 
-                if request in ['начать', 'привет']:
-                    send_hello(event)
-                elif request == '/h':
-                    send_menu(event)
-                elif request == '/p':
-                    send_picture(event)
-                elif request == '/s':
-                    send_search(event)
+                try:
+                    if request in ['начать', 'привет']:
+                        send_hello(event)
+                    elif request == '/h':
+                        send_menu(event)
+                    elif request == '/p':
+                        send_picture(event)
+                    elif request == '/s':
+                        send_search(event)
+                except IndexError:
+                    write_msg(event.user_id, 'Неправильное название города, попробуйте снова')
+                    continue
+                except ValueError:
+                    write_msg(event.user_id, 'Возраст может быть только числом, попробуйте снова')
+                    continue
+                except TypeError:
+                    continue
 
 
 if __name__ == '__main__':
