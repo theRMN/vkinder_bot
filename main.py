@@ -1,9 +1,10 @@
-import vk_api
-from config import group_token, app_token
+from SQL.vkinderBase import select_users_id, select_users, insert_user
 from vk_api.longpoll import VkLongPoll, VkEventType
+from config import group_token, app_token
 from random import randrange
-from pprint import pprint
 from datetime import date
+import vk_api
+from pprint import pprint
 
 session = vk_api.VkApi(token=group_token)
 session_2 = vk_api.VkApi(token=app_token)
@@ -17,6 +18,7 @@ def get_request(longpoll=longpoll):
 
             if event.to_me:
                 request = event.text.lower()
+
                 return request
 
 
@@ -113,25 +115,36 @@ def send_search(event):
             'город': None,
             'возраст': None}
 
-    for i in get_users(event.user_id)[0].items():
-        data[i[0]] = i[1]
-        if i[0] == 'bdate' and len(i[1].split('.')[-1]) == 4:
-            data['возраст'] = date.today().year - int(i[1].split('.')[-1])
+    if event.user_id not in select_users_id():
 
-    country_id = get_users(event.user_id)[0]['country']['id']
+        for i in get_users(event.user_id)[0].items():
+            data[i[0]] = i[1]
+            if i[0] == 'bdate' and len(i[1].split('.')[-1]) == 4:
+                data['возраст'] = date.today().year - int(i[1].split('.')[-1])
 
-    for i in data.items():
-        if i[1] is None:
-            write_msg(event.user_id, f'Введите свой {i[0]}')
+        country_id = get_users(event.user_id)[0]['country']['id']
 
-            request = get_request()
+        for i in data.items():
+            if i[1] is None:
+                write_msg(event.user_id, f'Введите свой {i[0]}')
 
-            if i[0] == 'город':
-                data['город'] = get_city_from_id(country_id, request)
-            elif i[0] == 'возраст' and int(request) > 70:
-                write_msg(event.user_id, 'Слишком большое значение возраста, попробуйте снова')
-            else:
-                data[i[0]] = request
+                request = get_request()
+
+                if i[0] == 'город':
+                    data['город'] = get_city_from_id(country_id, request)
+                elif i[0] == 'возраст' and int(request) > 70:
+                    write_msg(event.user_id, 'Слишком большое значение возраста, попробуйте снова')
+                else:
+                    data[i[0]] = request
+
+        insert_user(event.user_id, data['возраст'], data['sex'], data['город'])
+
+    else:
+        for i in select_users():
+            if i['user_id'] == event.user_id:
+                data['sex'] = i['sex']
+                data['возраст'] = i['возраст']
+                data['город'] = i['город']
 
     for i in search_users(int(data['возраст']), data['sex'], data['город']):
         first_name = i['first_name']
