@@ -1,10 +1,9 @@
-from SQL.vkinderBase import select_users_id, select_users, insert_user
+from SQL.vkinderBase import select_users_id, select_users, insert_user, select_peoples, insert_people
 from vk_api.longpoll import VkLongPoll, VkEventType
 from config import group_token, app_token
 from random import randrange
 from datetime import date
 import vk_api
-from pprint import pprint
 
 session = vk_api.VkApi(token=group_token)
 session_2 = vk_api.VkApi(token=app_token)
@@ -12,8 +11,8 @@ session_2 = vk_api.VkApi(token=app_token)
 longpoll = VkLongPoll(session)
 
 
-def get_request(longpoll=longpoll):
-    for event in longpoll.listen():
+def get_request(lp=longpoll):
+    for event in lp.listen():
         if event.type == VkEventType.MESSAGE_NEW:
 
             if event.to_me:
@@ -26,6 +25,13 @@ def write_msg(user_id, message):
     session.method('messages.send',
                    {'user_id': user_id,
                     'message': message,
+                    'random_id': randrange(10 ** 7)})
+
+
+def write_img(user_id, owner_id, media_id):
+    session.method('messages.send',
+                   {'user_id': user_id,
+                    'attachment': f'photo{owner_id}_{media_id}',
                     'random_id': randrange(10 ** 7)})
 
 
@@ -74,7 +80,7 @@ def get_city_from_id(country, city):
 def get_photos(user_id):
     request = session_2.method('photos.getAll', {'owner_id': user_id,
                                                  'offset': 0,
-                                                 'count': 50,
+                                                 'count': 200,
                                                  'photo_sizes': 1,
                                                  'extended': 1,
                                                  'v': 5.131})
@@ -82,7 +88,7 @@ def get_photos(user_id):
     result = {}
 
     for i in request['items']:
-        result[i['sizes'][-1]['url']] = i['likes']['count']
+        result[i['id']] = i['likes']['count']
 
     return sorted(result)[-4: -1]
 
@@ -150,9 +156,15 @@ def send_search(event):
         first_name = i['first_name']
         last_name = i['last_name']
         link = 'vk.com/id' + str(i['id'])
-        photo = '\n'.join(get_photos(str(i['id'])))
 
-        write_msg(event.user_id, f'{first_name} {last_name} - {link}\n{photo}')
+        if int(i['id']) not in select_peoples(event.user_id):
+            write_msg(event.user_id, f'{first_name} {last_name} - {link}\n')
+            insert_people(event.user_id, int(i['id']))
+
+            for photo in get_photos(str(i['id'])):
+                write_img(event.user_id, str(i['id']), photo)
+        else:
+            continue
 
         request = get_request()
 

@@ -1,5 +1,4 @@
 from VKinder.config import sql_pass
-from pprint import pprint
 import sqlalchemy
 
 db = f'postgresql://vkinder:{sql_pass}@localhost:5432/vkinder'
@@ -8,12 +7,7 @@ connection = engine.connect()
 
 
 def create_tables():
-    connection.execute("""create table peoples(
-                              id serial primary key,
-                              vk_id integer not null unique
-                          );
-                        
-                          create table users(
+    connection.execute("""create table users(
                               id serial primary key,
                               user_id integer not null unique,
                               age integer not null,
@@ -21,6 +15,11 @@ def create_tables():
                               city integer not null
                           );
                         
+                          create table peoples(
+                              id serial primary key,
+                              user_id integer references users(user_id),
+                              people_id integer not null
+                          );
                         """
                        )
 
@@ -52,6 +51,17 @@ def insert_user(user_id, age, sex, city):
                                VALUES ({user_id}, {age}, {sex}, {city});""")
 
 
-if __name__ == '__main__':
-    pprint(select_users())
-    pprint(select_users_id())
+def select_peoples(user_id):
+    data = []
+
+    result = connection.execute(f"""SELECT people_id FROM peoples WHERE user_id = {user_id}""").fetchall()
+
+    for i in result:
+        data.append(i[0])
+
+    return data
+
+
+def insert_people(user_id, people_id):
+    connection.execute(f"""INSERT INTO peoples (user_id, people_id)
+                               VALUES ({user_id}, {people_id})""")
