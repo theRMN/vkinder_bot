@@ -1,4 +1,4 @@
-from SQL.vkinderBase import select_users_id, select_users, insert_user, select_peoples, insert_people
+from SQL.vkinderBase import select_users_id, select_users, insert_user, select_peoples, insert_people, update_user
 from vk_api.longpoll import VkLongPoll, VkEventType
 from config import group_token, app_token
 from random import randrange
@@ -103,7 +103,8 @@ def send_menu(event):
     write_msg(event.user_id, f'===== Список комманд =====\n'
                              f'/p - рандомная картинка\n'
                              f'/s - поиск\n'
-                             f'/n - следующий человек в поиске\n')
+                             f'/n - следующий человек в поиске\n'
+                             f'/ch - изменить пользовательские днные\n')
     return
 
 
@@ -174,6 +175,46 @@ def send_search(event):
             return
 
 
+def change_user_data(event):
+    country_id = get_users(event.user_id)[0]['country']['id']
+    age = ''
+    city = ''
+
+    write_msg(event.user_id, 'Текущие данные:')
+    for i in select_users():
+        if i['user_id'] == event.user_id:
+            age = i['возраст']
+            city = i['город']
+            write_msg(event.user_id, f'Возраст: {age}\nГород: {city}')
+
+    write_msg(event.user_id, 'Что нужно поменять ?')
+
+    request = get_request()
+
+    if request == 'город':
+        write_msg(event.user_id, 'Введите новый город:')
+
+        request_city = get_request()
+        new_city = get_city_from_id(country_id, request_city)
+
+        update_user(event.user_id, int(age), int(new_city))
+
+        write_msg(event.user_id, 'Город успешно изменён')
+    elif request == 'возраст':
+        write_msg(event.user_id, 'Введите новый возраст:')
+
+        request_age = get_request()
+        print(request_age)
+        if int(request_age) > 70:
+            write_msg(event.user_id, 'Слишком большое значение возраста, попробуйте снова')
+        else:
+            update_user(event.user_id, int(request_age), int(city))
+            write_msg(event.user_id, 'Возраст успешно изменён')
+    else:
+        return
+    change_user_data(event)
+
+
 def execute():
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
@@ -190,6 +231,8 @@ def execute():
                         send_picture(event)
                     elif request == '/s':
                         send_search(event)
+                    elif request == '/ch':
+                        change_user_data(event)
                 except IndexError:
                     write_msg(event.user_id, 'Неправильное название города, попробуйте снова')
                     continue
