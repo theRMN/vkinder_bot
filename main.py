@@ -1,4 +1,5 @@
 from SQL.vkinderBase import select_users_id, select_users, insert_user, select_peoples, insert_people, update_user
+from SQL.vkinderBase import select_members_peoples
 from vk_api.longpoll import VkLongPoll, VkEventType
 from config import group_token, app_token
 from random import randrange
@@ -217,6 +218,16 @@ def change_user_data(event):
     change_user_data(event)
 
 
+def check_member_list(event):
+    write_msg(event.user_id, '===== Избранное =====')
+
+    for i in select_members_peoples(event.user_id):
+        first_name = get_users(i[0])[0]['first_name']
+        last_name = get_users(i[0])[0]['last_name']
+        write_msg(event.user_id, f'{first_name} {last_name} - vk.com/id{i[0]}')
+    return
+
+
 def execute():
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
@@ -235,6 +246,8 @@ def execute():
                         send_search(event)
                     elif request == '/ch':
                         change_user_data(event)
+                    elif request == '/cm':
+                        check_member_list(event)
                 except IndexError:
                     write_msg(event.user_id, 'Неправильное название города, попробуйте снова')
                     continue
