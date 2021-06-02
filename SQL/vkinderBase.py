@@ -63,16 +63,16 @@ def select_peoples(user_id):
     return data
 
 
-def insert_people(user_id, people_id):
-    connection.execute(f"""INSERT INTO peoples (user_id, people_id)
-                               VALUES ({user_id}, {people_id})""")
+def insert_people(user_id, people_id, member=0):
+    connection.execute(f"""INSERT INTO peoples (user_id, people_id, member)
+                               VALUES ({user_id}, {people_id}, {member})""")
 
 
 def update_user(user_id, age, city):
-    connection.execute(f"""UPDATE public.users
+    connection.execute(f"""UPDATE users
                             SET age={age},city={city} 
                             WHERE user_id={user_id};""")
 
 
-if __name__ == '__main__':
-    update_user(196844940, 28, 14)
+# if __name__ == '__main__':
+#     update_user(196844940, 28, 14)

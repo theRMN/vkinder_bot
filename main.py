@@ -104,6 +104,7 @@ def send_menu(event):
                              f'/p - рандомная картинка\n'
                              f'/s - поиск\n'
                              f'/n - следующий человек в поиске\n'
+                             f'/m - добавить в избраное\n'
                              f'/ch - изменить пользовательские днные\n')
     return
 
@@ -160,19 +161,21 @@ def send_search(event):
 
         if int(i['id']) not in select_peoples(event.user_id):
             write_msg(event.user_id, f'{first_name} {last_name} - {link}\n')
-            insert_people(event.user_id, int(i['id']))
 
             for photo in get_photos(str(i['id'])):
                 write_img(event.user_id, str(i['id']), photo)
+
+            request_member = get_request()
+
+            if request_member == '/m':
+                insert_people(event.user_id, int(i['id']), 1)
+            elif request_member == '/n':
+                insert_people(event.user_id, int(i['id']))
+            else:
+                return
+
         else:
             continue
-
-        request = get_request()
-
-        if request == '/n':
-            continue
-        else:
-            return
 
 
 def change_user_data(event):
@@ -204,7 +207,6 @@ def change_user_data(event):
         write_msg(event.user_id, 'Введите новый возраст:')
 
         request_age = get_request()
-        print(request_age)
         if int(request_age) > 70:
             write_msg(event.user_id, 'Слишком большое значение возраста, попробуйте снова')
         else:
