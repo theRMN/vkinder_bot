@@ -19,7 +19,8 @@ def create_tables():
                           create table peoples(
                               id serial primary key,
                               user_id integer references users(user_id),
-                              people_id integer not null
+                              people_id integer not null,
+                              member integer not null
                           );
                         """
                        )
